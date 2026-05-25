@@ -1,6 +1,6 @@
 // lib/teste_logica.dart
-import 'models/assistivel.dart';
-import 'models/mural.dart';
+import '../lib/models/assistivel.dart';
+import '../lib/models/mural.dart';
 
 void main() {
   print('--- INICIANDO TESTES DO NOTEFLIX ---\n');
