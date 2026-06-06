@@ -23,6 +23,11 @@ class MuralController extends ChangeNotifier {
     notifyListeners(); // Avisa a tela para apagar o cartão na mesma hora
   }
 
+  void editar(Assistivel antigo, Assistivel novo) {
+    _mural.atualizarItem(antigo, novo);
+    notifyListeners(); // Faz a tela atualizar com os novos dados modificados
+  }
+
   void alterarFiltro(OrdenacaoStrategy novaEstrategia) {
     _mural.mudarOrdenacao(novaEstrategia);
     notifyListeners();

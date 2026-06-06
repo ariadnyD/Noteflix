@@ -54,9 +54,16 @@ class Mural {
   void adicionarItem(Assistivel item) {
     meusItens.add(item);
   }
-  
+
   void removerItem(Assistivel item) {
     meusItens.remove(item);
+  }
+
+  void atualizarItem(Assistivel antigo, Assistivel novo) {
+    int index = meusItens.indexOf(antigo);
+    if (index != -1) {
+      meusItens[index] = novo;
+    }
   }
 
   // O botão da interface vai chamar esse método para trocar o filtro na hora!

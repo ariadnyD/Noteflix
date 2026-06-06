@@ -49,6 +49,8 @@ class Serie extends Assistivel {
     // Calcula o tempo total somando a duração de todos os filhos
     return _episodios.fold(0, (total, ep) => total + ep.duracaoMinutos);
   }
+  // Adicione esta linha dentro da class Serie para podermos ler os episódios na edição:
+  List<Assistivel> get episodios => _episodios;
 }
 
 // Criando o Episódio (que também é uma Folha)
