@@ -133,11 +133,17 @@ class TelaMural extends StatelessWidget {
                       const SizedBox(width: 8),
                       
                       // NOVO: Botão de Editar (Azul)
+                     // Botão de Editar (Azul) atualizado:
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 20),
                         onPressed: () {
-                          // O botão já está aqui, pronto para receber a lógica!
-                          print("Clicou em editar o item: ${item.titulo}");
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                            // Passamos o item atual aqui! Isso ativa o "Modo Edição"
+                            builder: (ctx) => FormularioNoteflix(itemParaEditar: item),
+                          );
                         },
                       ),
                       
@@ -163,24 +169,48 @@ class TelaMural extends StatelessWidget {
 
 // O nosso formulário inteligente que muda de Filme para Série
 class FormularioNoteflix extends StatefulWidget {
-  const FormularioNoteflix({super.key});
+  final Assistivel? itemParaEditar; // Se for nulo, é cadastro. Se vier preenchido, é edição!
+
+  const FormularioNoteflix({super.key, this.itemParaEditar});
 
   @override
   State<FormularioNoteflix> createState() => _FormularioNoteflixState();
 }
 
 class _FormularioNoteflixState extends State<FormularioNoteflix> {
-  bool _ehSerie = false; // Controla se estamos cadastrando Filme ou Série
+  bool _ehSerie = false;
 
   final _tituloCtrl = TextEditingController();
-  final _duracaoCtrl = TextEditingController(); // Só usado para filmes
+  final _duracaoCtrl = TextEditingController();
   final _notaCtrl = TextEditingController();
   final _resenhaCtrl = TextEditingController();
 
-  // Controladores para adicionar episódios na hora
   final _tituloEpCtrl = TextEditingController();
   final _duracaoEpCtrl = TextEditingController();
   final List<Episodio> _episodiosAdicionados = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Se recebemos um item para editar, preenchemos os controladores com os dados dele!
+    if (widget.itemParaEditar != null) {
+      final item = widget.itemParaEditar!;
+      _tituloCtrl.text = item.titulo;
+      _notaCtrl.text = item.nota?.toString() ?? '';
+      _resenhaCtrl.text = item.resenha ?? '';
+
+      if (item is Serie) {
+        _ehSerie = true;
+        // Carrega os episódios existentes para a nossa lista temporária do forms
+        for (var ep in item.episodios) {
+          if (ep is Episodio) _episodiosAdicionados.add(ep);
+        }
+      } else if (item is Filme) {
+        _ehSerie = false;
+        _duracaoCtrl.text = item.duracaoMinutos.toString();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -193,30 +223,32 @@ class _FormularioNoteflixState extends State<FormularioNoteflix> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Adicionar ao Noteflix', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-
-            // O Botão de Troca (Filme <-> Série)
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('Filme'), icon: Icon(Icons.movie)),
-                ButtonSegment(value: true, label: Text('Série'), icon: Icon(Icons.tv)),
-              ],
-              selected: {_ehSerie},
-              onSelectionChanged: (Set<bool> newSelection) {
-                setState(() {
-                  _ehSerie = newSelection.first;
-                });
-              },
+            Text(
+              widget.itemParaEditar == null ? 'Adicionar ao Noteflix' : 'Editar no Noteflix', 
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)
             ),
             const SizedBox(height: 16),
 
-            // Campos comuns aos dois
+            // Impede a troca entre filme/série durante a edição para não quebrar as classes
+            if (widget.itemParaEditar == null)
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('Filme'), icon: Icon(Icons.movie)),
+                  ButtonSegment(value: true, label: Text('Série'), icon: Icon(Icons.tv)),
+                ],
+                selected: {_ehSerie},
+                onSelectionChanged: (Set<bool> newSelection) {
+                  setState(() {
+                    _ehSerie = newSelection.first;
+                  });
+                },
+              ),
+            const SizedBox(height: 16),
+
             TextField(controller: _tituloCtrl, decoration: const InputDecoration(labelText: 'Título')),
             TextField(controller: _notaCtrl, decoration: const InputDecoration(labelText: 'Sua Nota (0 a 10)'), keyboardType: TextInputType.number),
             TextField(controller: _resenhaCtrl, decoration: const InputDecoration(labelText: 'Resenha rápida')),
             
-            // Se for Filme, mostra a duração normal. Se for Série, mostra a área de episódios!
             if (!_ehSerie) ...[
               TextField(controller: _duracaoCtrl, decoration: const InputDecoration(labelText: 'Duração Total (em minutos)'), keyboardType: TextInputType.number),
             ] else ...[
@@ -224,7 +256,6 @@ class _FormularioNoteflixState extends State<FormularioNoteflix> {
               const Divider(),
               const Text('Episódios', style: TextStyle(fontWeight: FontWeight.bold)),
               
-              // Mostra os episódios que já foram adicionados na lista temporária
               for (var ep in _episodiosAdicionados)
                 ListTile(
                   dense: true,
@@ -232,7 +263,6 @@ class _FormularioNoteflixState extends State<FormularioNoteflix> {
                   trailing: Text('${ep.duracaoMinutos} min'),
                 ),
               
-              // Miniformulário para adicionar episódios
               Row(
                 children: [
                   Expanded(child: TextField(controller: _tituloEpCtrl, decoration: const InputDecoration(labelText: 'Nome do Ep'))),
@@ -272,23 +302,31 @@ class _FormularioNoteflixState extends State<FormularioNoteflix> {
                   Assistivel novoItem;
 
                   if (_ehSerie) {
-                    // Cria a Série e adiciona todos os episódios que estavam na lista temporária
                     var serie = Serie(titulo: titulo);
                     for (var ep in _episodiosAdicionados) {
                       serie.adicionarEpisodio(ep);
                     }
                     novoItem = serie;
                   } else {
-                    // Cria o Filme normal
                     final duracao = int.tryParse(_duracaoCtrl.text) ?? 0;
                     novoItem = Filme(titulo: titulo, duracao: duracao);
                   }
 
                   novoItem.avaliar(nota, resenha);
-                  Provider.of<MuralController>(context, listen: false).adicionar(novoItem);
+                  
+                  final controller = Provider.of<MuralController>(context, listen: false);
+                  
+                  if (widget.itemParaEditar == null) {
+                    // Modo Cadastro
+                    controller.adicionar(novoItem);
+                  } else {
+                    // Modo Edição
+                    controller.editar(widget.itemParaEditar!, novoItem);
+                  }
+
                   Navigator.pop(context); 
                 },
-                child: const Text('Salvar no Mural', style: TextStyle(fontSize: 18, color: Colors.white)),
+                child: Text(widget.itemParaEditar == null ? 'Salvar no Mural' : 'Salvar Alterações', style: const TextStyle(fontSize: 18, color: Colors.white)),
               ),
             ),
             const SizedBox(height: 24),
