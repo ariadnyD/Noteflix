@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'models/mural_controller.dart';
 import 'models/mural.dart';
+import 'models/assistivel.dart';
 
 void main() {
   // O runApp inicia o aplicativo. 
@@ -47,10 +48,16 @@ class TelaMural extends StatelessWidget {
           icon: const Icon(Icons.add_circle_outline, size: 28),
           tooltip: 'Adicionar Novo',
           onPressed: () {
-            // Aqui vai entrar a chamada para a janelinha de cadastro
-            print("Clicou em adicionar!");
+            // Agora chamamos o nosso Widget inteligente!
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+              builder: (ctx) => const FormularioNoteflix(),
+            );
           },
         ),
+        
         
         title: const Text('Meu Noteflix', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
@@ -130,6 +137,144 @@ class TelaMural extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+// O nosso formulário inteligente que muda de Filme para Série
+class FormularioNoteflix extends StatefulWidget {
+  const FormularioNoteflix({super.key});
+
+  @override
+  State<FormularioNoteflix> createState() => _FormularioNoteflixState();
+}
+
+class _FormularioNoteflixState extends State<FormularioNoteflix> {
+  bool _ehSerie = false; // Controla se estamos cadastrando Filme ou Série
+
+  final _tituloCtrl = TextEditingController();
+  final _duracaoCtrl = TextEditingController(); // Só usado para filmes
+  final _notaCtrl = TextEditingController();
+  final _resenhaCtrl = TextEditingController();
+
+  // Controladores para adicionar episódios na hora
+  final _tituloEpCtrl = TextEditingController();
+  final _duracaoEpCtrl = TextEditingController();
+  final List<Episodio> _episodiosAdicionados = [];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        top: 24, left: 24, right: 24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Adicionar ao Noteflix', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+
+            // O Botão de Troca (Filme <-> Série)
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('Filme'), icon: Icon(Icons.movie)),
+                ButtonSegment(value: true, label: Text('Série'), icon: Icon(Icons.tv)),
+              ],
+              selected: {_ehSerie},
+              onSelectionChanged: (Set<bool> newSelection) {
+                setState(() {
+                  _ehSerie = newSelection.first;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Campos comuns aos dois
+            TextField(controller: _tituloCtrl, decoration: const InputDecoration(labelText: 'Título')),
+            TextField(controller: _notaCtrl, decoration: const InputDecoration(labelText: 'Sua Nota (0 a 10)'), keyboardType: TextInputType.number),
+            TextField(controller: _resenhaCtrl, decoration: const InputDecoration(labelText: 'Resenha rápida')),
+            
+            // Se for Filme, mostra a duração normal. Se for Série, mostra a área de episódios!
+            if (!_ehSerie) ...[
+              TextField(controller: _duracaoCtrl, decoration: const InputDecoration(labelText: 'Duração Total (em minutos)'), keyboardType: TextInputType.number),
+            ] else ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const Text('Episódios', style: TextStyle(fontWeight: FontWeight.bold)),
+              
+              // Mostra os episódios que já foram adicionados na lista temporária
+              for (var ep in _episodiosAdicionados)
+                ListTile(
+                  dense: true,
+                  title: Text(ep.titulo),
+                  trailing: Text('${ep.duracaoMinutos} min'),
+                ),
+              
+              // Miniformulário para adicionar episódios
+              Row(
+                children: [
+                  Expanded(child: TextField(controller: _tituloEpCtrl, decoration: const InputDecoration(labelText: 'Nome do Ep'))),
+                  const SizedBox(width: 8),
+                  SizedBox(width: 80, child: TextField(controller: _duracaoEpCtrl, decoration: const InputDecoration(labelText: 'Min'), keyboardType: TextInputType.number)),
+                  IconButton(
+                    icon: const Icon(Icons.add_box, color: Colors.deepPurpleAccent),
+                    onPressed: () {
+                      if (_tituloEpCtrl.text.isNotEmpty && _duracaoEpCtrl.text.isNotEmpty) {
+                        setState(() {
+                          _episodiosAdicionados.add(Episodio(
+                            titulo: _tituloEpCtrl.text, 
+                            duracao: int.parse(_duracaoEpCtrl.text)
+                          ));
+                          _tituloEpCtrl.clear();
+                          _duracaoEpCtrl.clear();
+                        });
+                      }
+                    },
+                  )
+                ],
+              ),
+              const Divider(),
+            ],
+
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurpleAccent),
+                onPressed: () {
+                  final titulo = _tituloCtrl.text;
+                  final nota = double.tryParse(_notaCtrl.text) ?? 0.0;
+                  final resenha = _resenhaCtrl.text;
+
+                  Assistivel novoItem;
+
+                  if (_ehSerie) {
+                    // Cria a Série e adiciona todos os episódios que estavam na lista temporária
+                    var serie = Serie(titulo: titulo);
+                    for (var ep in _episodiosAdicionados) {
+                      serie.adicionarEpisodio(ep);
+                    }
+                    novoItem = serie;
+                  } else {
+                    // Cria o Filme normal
+                    final duracao = int.tryParse(_duracaoCtrl.text) ?? 0;
+                    novoItem = Filme(titulo: titulo, duracao: duracao);
+                  }
+
+                  novoItem.avaliar(nota, resenha);
+                  Provider.of<MuralController>(context, listen: false).adicionar(novoItem);
+                  Navigator.pop(context); 
+                },
+                child: const Text('Salvar no Mural', style: TextStyle(fontSize: 18, color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }

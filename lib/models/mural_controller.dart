@@ -9,8 +9,8 @@ class MuralController extends ChangeNotifier {
   late Mural _mural;
 
   MuralController() {
-    // Iniciamos o mural com a ordem alfabética por padrão
-    _mural = Mural(OrdenarPorTitulo());
+    // Iniciamos o mural com os mais recentes por padrão, conforme solicitado
+    _mural = Mural(OrdenarPorMaisRecente());
 
     // --- INJETANDO DADOS FALSOS PARA TESTAR O VISUAL ---
     var filme1 = Filme(titulo: 'O Auto da Compadecida', duracao: 104);
