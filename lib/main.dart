@@ -57,32 +57,33 @@ class TelaMural extends StatelessWidget {
         
         // 2. Botão de Filtrar na Direita (actions)
         // 2. Menu de Filtrar na Direita (actions)
+        // 2. Menu de Filtrar na Direita (actions)
         actions: [
           PopupMenuButton<int>(
             icon: const Icon(Icons.filter_list, size: 28),
             tooltip: 'Ordenar lista',
-            // Quando uma opção for clicada, o onSelected é acionado
             onSelected: (int valorEscolhido) {
-              // Pegamos a "antena" do Controller, mas sem ficar escutando (listen: false)
-              // porque aqui queremos apenas dar uma ordem, e não redesenhar o botão.
               final controller = Provider.of<MuralController>(context, listen: false);
               
               if (valorEscolhido == 1) {
-                // Pluga o cartucho de Ordem Alfabética
-                controller.alterarFiltro(OrdenarPorTitulo());
+                controller.alterarFiltro(OrdenarPorMaisRecente()); // O seu novo filtro!
               } else if (valorEscolhido == 2) {
-                // Pluga o cartucho de Maior Nota
+                controller.alterarFiltro(OrdenarPorTitulo());
+              } else if (valorEscolhido == 3) {
                 controller.alterarFiltro(OrdenarPorNota());
               }
             },
-            // Constrói os botões do menu
             itemBuilder: (BuildContext context) => [
               const PopupMenuItem(
                 value: 1,
-                child: Text('Ordem Alfabética'),
+                child: Text('Mais Recentes'),
               ),
               const PopupMenuItem(
                 value: 2,
+                child: Text('Ordem Alfabética'),
+              ),
+              const PopupMenuItem(
+                value: 3,
                 child: Text('Maior Nota'),
               ),
             ],
