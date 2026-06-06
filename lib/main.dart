@@ -122,13 +122,32 @@ class TelaMural extends StatelessWidget {
                     ),
                   ),
                   trailing: Row(
-                    mainAxisSize: MainAxisSize.min, // Impede que a linha empurre o texto para o lado
+                    mainAxisSize: MainAxisSize.min, 
                     children: [
                       const Icon(Icons.star, color: Colors.amber, size: 24),
-                      const SizedBox(width: 4), // Dá um espacinho charmoso entre a estrela e o número
+                      const SizedBox(width: 4), 
                       Text(
                         item.nota?.toStringAsFixed(1) ?? '-',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      
+                      // NOVO: Botão de Editar (Azul)
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 20),
+                        onPressed: () {
+                          // O botão já está aqui, pronto para receber a lógica!
+                          print("Clicou em editar o item: ${item.titulo}");
+                        },
+                      ),
+                      
+                      // NOVO: Botão de Excluir (Vermelho)
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                        onPressed: () {
+                          // Chama o Controller passando exatamente o item que foi clicado
+                          Provider.of<MuralController>(context, listen: false).remover(item);
+                        },
                       ),
                     ],
                   ),
