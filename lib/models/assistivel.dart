@@ -1,44 +1,99 @@
 // lib/models/assistivel.dart
 
-// 1. O Componente Base
-// Esta interface diz o que qualquer item do mural precisa ter.
 abstract class Assistivel {
   String get titulo;
   int get duracaoMinutos;
-  
   double? nota;
   String? resenha;
 
-  void avaliar(double valor, String texto) {
-    nota = valor;
-    resenha = texto;
+  void avaliar(double nota, String resenha) {
+    this.nota = nota;
+    this.resenha = resenha;
+  }
+
+  // OBRIGATÓRIO: Todo assistível precisa saber virar um "dicionário" (Map)
+  Map<String, dynamic> toJson();
+
+  // FÁBRICA INTELIGENTE: Lê o dicionário do arquivo e recria o objeto certo
+  static Assistivel fromJson(Map<String, dynamic> json) {
+    if (json['tipo'] == 'filme') {
+      var filme = Filme(titulo: json['titulo'], duracao: json['duracao']);
+      if (json['nota'] != null) filme.avaliar(json['nota'], json['resenha']);
+      return filme;
+    } else {
+      var serie = Serie(titulo: json['titulo']);
+      if (json['nota'] != null) serie.avaliar(json['nota'], json['resenha']);
+      
+      // Se for série, temos que recriar os episódios também!
+      if (json['episodios'] != null) {
+        for (var epJson in json['episodios']) {
+          serie.adicionarEpisodio(Episodio(titulo: epJson['titulo'], duracao: epJson['duracao']));
+        }
+      }
+      return serie;
+    }
   }
 }
 
-// 2. A "Folha" (Leaf)
-// Representa um item único que não pode ser dividido.
 class Filme extends Assistivel {
-  @override
-  final String titulo;
-  final int duracao; // Duração em minutos
+  final String _titulo;
+  final int _duracao;
 
-  Filme({required this.titulo, required this.duracao});
+  Filme({required String titulo, required int duracao})
+      : _titulo = titulo,
+        _duracao = duracao;
 
   @override
-  int get duracaoMinutos => duracao;
+  String get titulo => _titulo;
+
+  @override
+  int get duracaoMinutos => _duracao;
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'tipo': 'filme', // Essa tag é o segredo para sabermos o que recriar depois!
+      'titulo': titulo,
+      'duracao': duracaoMinutos,
+      'nota': nota,
+      'resenha': resenha,
+    };
+  }
 }
 
-// 3. O "Composite" (Composto)
-// Representa um item que contém uma coleção de outros itens.
-class Serie extends Assistivel {
+class Episodio extends Assistivel {
+  final String _titulo;
+  final int _duracao;
+
+  Episodio({required String titulo, required int duracao})
+      : _titulo = titulo,
+        _duracao = duracao;
+
   @override
-  final String titulo;
-  
-  // A magia do Composite está aqui: uma lista do tipo da interface base!
-  // Pode guardar tanto episódios soltos, quanto temporadas inteiras (se criássemos a classe).
+  String get titulo => _titulo;
+
+  @override
+  int get duracaoMinutos => _duracao;
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'titulo': titulo,
+      'duracao': duracaoMinutos,
+    };
+  }
+}
+
+class Serie extends Assistivel {
+  final String _titulo;
   final List<Assistivel> _episodios = [];
 
-  Serie({required this.titulo});
+  Serie({required String titulo}) : _titulo = titulo;
+
+  @override
+  String get titulo => _titulo;
+
+  List<Assistivel> get episodios => _episodios;
 
   void adicionarEpisodio(Assistivel episodio) {
     _episodios.add(episodio);
@@ -46,21 +101,22 @@ class Serie extends Assistivel {
 
   @override
   int get duracaoMinutos {
-    // Calcula o tempo total somando a duração de todos os filhos
-    return _episodios.fold(0, (total, ep) => total + ep.duracaoMinutos);
+    int total = 0;
+    for (var episodio in _episodios) {
+      total += episodio.duracaoMinutos;
+    }
+    return total;
   }
-  // Adicione esta linha dentro da class Serie para podermos ler os episódios na edição:
-  List<Assistivel> get episodios => _episodios;
-}
-
-// Criando o Episódio (que também é uma Folha)
-class Episodio extends Assistivel {
-  @override
-  final String titulo;
-  final int duracao;
-
-  Episodio({required this.titulo, required this.duracao});
 
   @override
-  int get duracaoMinutos => duracao;
+  Map<String, dynamic> toJson() {
+    return {
+      'tipo': 'serie',
+      'titulo': titulo,
+      'nota': nota,
+      'resenha': resenha,
+      // Pega todos os objetos de episódios e transforma em uma lista de dicionários
+      'episodios': _episodios.map((ep) => (ep as Episodio).toJson()).toList(),
+    };
+  }
 }
