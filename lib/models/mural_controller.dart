@@ -11,6 +11,22 @@ class MuralController extends ChangeNotifier {
   MuralController() {
     // Iniciamos o mural com a ordem alfabética por padrão
     _mural = Mural(OrdenarPorTitulo());
+
+    // --- INJETANDO DADOS FALSOS PARA TESTAR O VISUAL ---
+    var filme1 = Filme(titulo: 'O Auto da Compadecida', duracao: 104);
+    filme1.avaliar(10.0, 'Uma obra prima brasileira!');
+
+    var filme2 = Filme(titulo: 'Interestelar', duracao: 169);
+    filme2.avaliar(9.5, 'Me fez chorar muito.');
+
+    var serie = Serie(titulo: 'Breaking Bad');
+    serie.adicionarEpisodio(Episodio(titulo: 'Piloto', duracao: 58));
+    serie.adicionarEpisodio(Episodio(titulo: 'O Gato na Bolsa', duracao: 48));
+    serie.avaliar(9.9, 'A melhor série já feita.');
+
+    _mural.adicionarItem(filme1);
+    _mural.adicionarItem(filme2);
+    _mural.adicionarItem(serie);
   }
 
   // A interface vai pedir essa lista para desenhar na tela
