@@ -32,6 +32,15 @@ class OrdenarPorNota implements OrdenacaoStrategy {
   }
 }
 
+// 4. Estratégia Concreta C: Mais Recentes (Últimos adicionados primeiro)
+class OrdenarPorMaisRecente implements OrdenacaoStrategy {
+  @override
+  List<Assistivel> ordenar(List<Assistivel> itens) {
+    // Retorna a lista de trás pra frente (reversed)
+    return List<Assistivel>.from(itens.reversed);
+  }
+}
+
 // 4. O Contexto (O Mural que usa a estratégia)
 class Mural {
   List<Assistivel> meusItens = [];
