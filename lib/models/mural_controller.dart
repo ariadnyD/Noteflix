@@ -8,10 +8,11 @@ import 'mural.dart';
 
 class MuralController extends ChangeNotifier {
   late Mural _mural;
+  final String usuarioAtual;
 
-  MuralController() {
+  MuralController(this.usuarioAtual) {
     _mural = Mural(OrdenarPorMaisRecente());
-    _carregarDadosLocais(); // Assim que o app inicia, ele procura o arquivo no disco!
+    _carregarDadosLocais(); 
   }
 
   List<Assistivel> get itens => _mural.itensOrdenados;
@@ -43,18 +44,14 @@ class MuralController extends ChangeNotifier {
 
   Future<void> _salvarDadosLocais() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    // Transforma a nossa lista de Objetos em uma lista de Dicionários JSON
     final listaDeDicionarios = _mural.meusItens.map((item) => item.toJson()).toList();
-    
-    // Transforma tudo num texto gigantesco e salva no disco
     final stringJson = jsonEncode(listaDeDicionarios);
-    await prefs.setString('noteflix_bd', stringJson);
+    await prefs.setString('noteflix_bd_$usuarioAtual', stringJson);
   }
 
   Future<void> _carregarDadosLocais() async {
     final prefs = await SharedPreferences.getInstance();
-    final stringJson = prefs.getString('noteflix_bd');
+    final stringJson = prefs.getString('noteflix_bd_$usuarioAtual');
     
     if (stringJson != null) {
       // Pega o texto do disco e converte de volta pra Lista
@@ -67,4 +64,5 @@ class MuralController extends ChangeNotifier {
       notifyListeners(); // Avisa a tela que os dados chegaram!
     }
   }
+  
 }

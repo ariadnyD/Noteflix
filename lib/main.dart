@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'models/mural_controller.dart';
 import 'models/mural.dart';
 import 'models/assistivel.dart';
 
 void main() {
-  // O runApp inicia o aplicativo. 
-  // Envolvemos ele no ChangeNotifierProvider para ativar o padrão Observer na interface!
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => MuralController(),
-      child: const NoteflixApp(),
-    ),
-  );
+  runApp(const NoteflixApp());
 }
 
 class NoteflixApp extends StatelessWidget {
@@ -22,15 +17,12 @@ class NoteflixApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Noteflix',
-      debugShowCheckedModeBanner: false, // Tira aquela faixa vermelha de "Debug" da tela
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple, // A cor principal do seu app
-          brightness: Brightness.dark,  // Tema escuro combina muito mais com cinema!
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
         useMaterial3: true,
       ),
-      home: const TelaMural(),
+      home: const TelaLogin(),
     );
   }
 }
@@ -43,28 +35,29 @@ class TelaMural extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // 1. Botão de Adicionar na Esquerda (leading)
         leading: IconButton(
           icon: const Icon(Icons.add_circle_outline, size: 28),
           tooltip: 'Adicionar Novo',
           onPressed: () {
-            // Agora chamamos o nosso Widget inteligente!
+            // PEGANDO O CONTROLLER DA TELA PRINCIPAL:
+            final controller = Provider.of<MuralController>(context, listen: false);
+            
             showModalBottomSheet(
               context: context,
               isScrollControlled: true,
               shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-              builder: (ctx) => const FormularioNoteflix(),
+              // EMPRESTANDO O CONTROLLER PARA A JANELINHA:
+              builder: (ctx) => ChangeNotifierProvider.value(
+                value: controller,
+                child: const FormularioNoteflix(),
+              ),
             );
           },
         ),
         
-        
         title: const Text('Meu Noteflix', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
-        
-        // 2. Botão de Filtrar na Direita (actions)
-        // 2. Menu de Filtrar na Direita (actions)
-        // 2. Menu de Filtrar na Direita (actions)
+      
         actions: [
           PopupMenuButton<int>(
             icon: const Icon(Icons.filter_list, size: 28),
@@ -132,22 +125,23 @@ class TelaMural extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       
-                      // NOVO: Botão de Editar (Azul)
-                     // Botão de Editar (Azul) atualizado:
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blueAccent, size: 20),
                         onPressed: () {
+                          final controller = Provider.of<MuralController>(context, listen: false);
+                          
                           showModalBottomSheet(
                             context: context,
                             isScrollControlled: true,
                             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-                            // Passamos o item atual aqui! Isso ativa o "Modo Edição"
-                            builder: (ctx) => FormularioNoteflix(itemParaEditar: item),
+                            builder: (ctx) => ChangeNotifierProvider.value(
+                              value: controller,
+                              child: FormularioNoteflix(itemParaEditar: item),
+                            ),
                           );
                         },
                       ),
                       
-                      // NOVO: Botão de Excluir (Vermelho)
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
                         onPressed: () {
@@ -167,7 +161,6 @@ class TelaMural extends StatelessWidget {
   }
 }
 
-// O nosso formulário inteligente que muda de Filme para Série
 class FormularioNoteflix extends StatefulWidget {
   final Assistivel? itemParaEditar; // Se for nulo, é cadastro. Se vier preenchido, é edição!
 
@@ -331,6 +324,112 @@ class _FormularioNoteflixState extends State<FormularioNoteflix> {
             ),
             const SizedBox(height: 24),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class TelaLogin extends StatefulWidget {
+  const TelaLogin({super.key});
+
+  @override
+  State<TelaLogin> createState() => _TelaLoginState();
+}
+
+class _TelaLoginState extends State<TelaLogin> {
+  final _usuarioCtrl = TextEditingController();
+  final _senhaCtrl = TextEditingController();
+  String _mensagemErro = '';
+
+  Future<void> _entrarOuCadastrar() async {
+    final usuario = _usuarioCtrl.text.trim().toLowerCase();
+    final senha = _senhaCtrl.text.trim();
+
+    if (usuario.isEmpty || senha.isEmpty) {
+      setState(() => _mensagemErro = 'Preencha todos os campos!');
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    // Puxa o "dicionário" de usuários cadastrados
+    final stringUsuarios = prefs.getString('usuarios_cadastrados') ?? '{}';
+    final Map<String, dynamic> usuarios = jsonDecode(stringUsuarios);
+
+    if (usuarios.containsKey(usuario)) {
+      // Usuário já existe, vamos checar a senha
+      if (usuarios[usuario] == senha) {
+        _irParaMural(usuario);
+      } else {
+        setState(() => _mensagemErro = 'Senha incorreta!');
+      }
+    } else {
+      // Primeiro acesso: cadastra automaticamente e já entra!
+      usuarios[usuario] = senha;
+      await prefs.setString('usuarios_cadastrados', jsonEncode(usuarios));
+      _irParaMural(usuario);
+    }
+  }
+
+  void _irParaMural(String nomeUsuario) {
+    // Redireciona para o mural e injeta o Controller específico desse usuário!
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChangeNotifierProvider(
+          create: (context) => MuralController(nomeUsuario),
+          child: const TelaMural(),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32.0),
+          // A MÁGICA VISUAL AQUI: Limitamos a largura para 400 pixels!
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.movie_filter, size: 80, color: Colors.deepPurpleAccent),
+                const SizedBox(height: 16),
+                const Text('Noteflix', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                const Text('Seu catálogo pessoal', style: TextStyle(color: Colors.grey)),
+                const SizedBox(height: 40),
+                
+                TextField(
+                  controller: _usuarioCtrl,
+                  decoration: const InputDecoration(labelText: 'Usuário', prefixIcon: Icon(Icons.person)),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _senhaCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Senha', prefixIcon: Icon(Icons.lock)),
+                ),
+                const SizedBox(height: 16),
+                
+                if (_mensagemErro.isNotEmpty)
+                  Text(_mensagemErro, style: const TextStyle(color: Colors.redAccent)),
+                
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurpleAccent),
+                    onPressed: _entrarOuCadastrar,
+                    child: const Text('Entrar', style: TextStyle(fontSize: 18, color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
